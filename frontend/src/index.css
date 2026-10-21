@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --hospital-primary: #0284c7;
+    --hospital-dark: #0f172a;
+    --hospital-teal: #0d9488;
+    --hospital-bg: #f8fafc;
+  }
+  
+  body {
+    background-color: var(--hospital-bg);
+    color: #1e293b;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+}
