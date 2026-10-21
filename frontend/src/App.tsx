@@ -9,8 +9,12 @@ import { SystemStatus } from './components/landing/SystemStatus';
 import { Footer } from './components/common/Footer';
 import { PatientIntakeModal } from './components/modals/PatientIntakeModal';
 import { DoctorPortalModal } from './components/modals/DoctorPortalModal';
+import { PatientIntakeFlow } from './components/intake/PatientIntakeFlow';
+
+type ActiveView = 'landing' | 'intake';
 
 const MainApp: React.FC = () => {
+  const [activeView, setActiveView] = useState<ActiveView>('landing');
   const [patientModalOpen, setPatientModalOpen] = useState<boolean>(false);
   const [patientDemoMode, setPatientDemoMode] = useState<boolean>(false);
   const [doctorModalOpen, setDoctorModalOpen] = useState<boolean>(false);
@@ -18,13 +22,24 @@ const MainApp: React.FC = () => {
 
   const handleOpenPatientIntake = (demoMode: boolean) => {
     setPatientDemoMode(demoMode);
-    setPatientModalOpen(true);
+    // Directly launch intake flow or modal
+    setActiveView('intake');
   };
 
   const handleOpenDoctorPortal = (sampleMode: boolean) => {
     setDoctorSampleMode(sampleMode);
     setDoctorModalOpen(true);
   };
+
+  // If activeView is 'intake', render the full patient intake kiosk flow
+  if (activeView === 'intake') {
+    return (
+      <PatientIntakeFlow
+        isDemoMode={patientDemoMode}
+        onExit={() => setActiveView('landing')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 antialiased">
@@ -60,6 +75,10 @@ const MainApp: React.FC = () => {
         isOpen={patientModalOpen}
         onClose={() => setPatientModalOpen(false)}
         isDemoMode={patientDemoMode}
+        onStartIntake={(demo) => {
+          setPatientDemoMode(demo);
+          setActiveView('intake');
+        }}
       />
 
       <DoctorPortalModal

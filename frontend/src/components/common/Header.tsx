@@ -12,12 +12,14 @@ import {
 export const Header: React.FC = () => {
   const { language, setLanguage, textScale, setTextScale, voiceGuide, toggleVoiceGuide, t } = useLanguage();
 
-  const currentDate = new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const currentDate = React.useMemo(() => {
+    return new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }, [language]);
 
   return (
     <header className="bg-white border-b border-slate-200 shadow-xs sticky top-0 z-40">

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import type { SupportedLanguage, TextScale } from '../types';
 import { translations } from '../i18n/translations';
 
@@ -15,17 +15,17 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<SupportedLanguage>('en');
+  const [language, setLanguageState] = useState<SupportedLanguage>(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('medikiosk_lang') as SupportedLanguage;
+      if (savedLang === 'en' || savedLang === 'hi') {
+        return savedLang;
+      }
+    }
+    return 'en';
+  });
   const [textScale, setTextScale] = useState<TextScale>('normal');
   const [voiceGuide, setVoiceGuide] = useState<boolean>(false);
-
-  // Optional: load from localStorage if available
-  useEffect(() => {
-    const savedLang = localStorage.getItem('medikiosk_lang') as SupportedLanguage;
-    if (savedLang === 'en' || savedLang === 'hi') {
-      setLanguageState(savedLang);
-    }
-  }, []);
 
   const setLanguage = (lang: SupportedLanguage) => {
     setLanguageState(lang);

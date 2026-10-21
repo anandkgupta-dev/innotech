@@ -42,8 +42,8 @@ innotech/
 | Phase | Description | Status |
 |---|---|---|
 | **Phase 1** | **Foundation, UI Design System & Hospital Landing Page** | ✅ **Completed & Verified** |
-| **Phase 2** | Patient Intake Flow (Bilingual consent, registration, guided questionnaire) | ⏳ *Next Phase* |
-| **Phase 3** | Backend & Database (Node.js/Express, MongoDB persistence, audit logs) | ⏳ Upcoming |
+| **Phase 2** | **Patient Intake Flow (Bilingual consent, registration, guided questionnaire)** | ✅ **Completed & Verified** |
+| **Phase 3** | Backend & Database (Node.js/Express, MongoDB persistence, audit logs) | ⏳ Next Phase |
 | **Phase 4** | Document Processing & OCR (Upload pipeline, image preprocessing, extraction) | ⏳ Upcoming |
 | **Phase 5** | AI Clinical Summary & Red-Flag Rules (Constrained questions, draft generation) | ⏳ Upcoming |
 | **Phase 6** | Doctor Dashboard & AYUSH (Physician review, edit/sign-off, Dashavidha Pariksha) | ⏳ Upcoming |
@@ -98,9 +98,48 @@ In Phase 1, we established the core foundation and hospital-grade interface:
    npm run build
    ```
 
+### Running the Backend & Testing MongoDB Atlas
+1. Open PowerShell and navigate to the `backend` folder:
+   ```powershell
+   cd c:\Users\akg50\Desktop\innotech\backend
+   ```
+
+2. Create your local `.env` file (copy from `.env.example`):
+   ```powershell
+   cp .env.example .env
+   ```
+
+3. Open `.env` and paste your MongoDB Atlas connection string from Cluster0:
+   ```env
+   MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/medikiosk?retryWrites=true&w=majority
+   ```
+   *(Note: The database name `medikiosk` is automatically applied. Credentials are never logged or exposed).*
+
+4. Start the backend service:
+   ```powershell
+   npm run dev
+   ```
+
+5. Check the connection status via the health check endpoint:
+   ```powershell
+   Invoke-RestMethod -Uri "http://127.0.0.1:5000/api/health"
+   ```
+   Output when connected:
+   ```json
+   {
+     "status": "ok",
+     "service": "MediKiosk Clinical Intake Backend API",
+     "database": {
+       "status": "connected",
+       "connected": true,
+       "name": "medikiosk"
+     }
+   }
+   ```
+
 ---
 
-## 6. Known Limitations (Phase 1)
-- Currently operates with synthetic in-memory demo patient records.
-- Backend API and persistent database connections will be activated in Phase 3.
-- Document scanning and OCR extraction pipelines will be integrated in Phase 4.
+## 6. Current Implementation Status
+- **Phase 1 (Hospital Landing Page & UI Foundations):** ✅ Completed & Verified.
+- **Phase 2 (Patient Intake Workflow):** ✅ Completed & Verified (Steps A-G, voice/touch input, red-flag alert, review, token generation).
+- **Backend & Database Foundation:** ✅ Configured Node.js/Express with Mongoose connection module for MongoDB Atlas `Cluster0`, secure health check endpoint (`/api/health`), and `.env` protection.

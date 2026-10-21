@@ -12,12 +12,14 @@ interface PatientIntakeModalProps {
   isOpen: boolean;
   onClose: () => void;
   isDemoMode: boolean;
+  onStartIntake?: (demoMode: boolean) => void;
 }
 
 export const PatientIntakeModal: React.FC<PatientIntakeModalProps> = ({
   isOpen,
   onClose,
   isDemoMode,
+  onStartIntake,
 }) => {
   const { t, language } = useLanguage();
 
@@ -175,17 +177,29 @@ export const PatientIntakeModal: React.FC<PatientIntakeModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div className="pt-5 mt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs text-slate-500">
-            {language === 'hi' ? 'चरण १: प्रवेश द्वार सत्यापित' : 'Phase 1: Entry Portal Verified'}
+            {language === 'hi' ? 'चरण २: संपूर्ण मरीज स्व-सेवा कार्यप्रणाली तैयार' : 'Phase 2: Complete Patient Intake Workflow Ready'}
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-sky-700 hover:bg-sky-800 text-white transition-colors cursor-pointer"
-          >
-            {t('closeBtn')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+            >
+              {t('closeBtn')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onStartIntake) onStartIntake(isDemoMode);
+              }}
+              className="px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-sky-700 hover:bg-sky-800 text-white transition-colors cursor-pointer"
+            >
+              {t('patientModalAction')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
