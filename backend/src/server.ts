@@ -12,8 +12,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
-// Security & Parsing middleware
-app.use(helmet());
+// Security & Parsing middleware (robust across ESM and CJS Node runtimes)
+const helmetMiddleware = typeof helmet === 'function' ? helmet : ((helmet as any).default || helmet);
+app.use((helmetMiddleware as any)());
 
 // Build allowed origins list
 const defaultLocalOrigins = [
