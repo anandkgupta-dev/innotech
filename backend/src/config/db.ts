@@ -116,3 +116,26 @@ export function getDbStatusText(): 'connected' | 'connecting' | 'disconnecting' 
       return 'disconnected';
   }
 }
+
+let activeConnectPromise: Promise<boolean> | null = null;
+
+/**
+ * Ensures MongoDB Atlas is connected before handling an incoming request.
+ * In serverless environments (e.g. Vercel Functions), reuses an existing warm connection
+ * or completes connection during cold start.
+ */
+export async function ensureDbConnected(): Promise<boolean> {
+  if (mongoose.connection.readyState === 1) {
+    return true;
+  }
+  if (!process.env.MONGODB_URI) {
+    return false;
+  }
+  if (activeConnectPromise) {
+    return activeConnectPromise;
+  }
+  activeConnectPromise = attemptConnection().finally(() => {
+    activeConnectPromise = null;
+  });
+  return activeConnectPromise;
+}

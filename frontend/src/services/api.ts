@@ -1,7 +1,19 @@
 import type { PatientIntakeState } from '../types';
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string) || '/api';
+function getApiBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  if (!envUrl) {
+    // In local development, use '/api' to leverage Vite dev proxy to backend port 5000
+    return '/api';
+  }
+  const cleanUrl = envUrl.replace(/\/+$/, '');
+  if (!cleanUrl.endsWith('/api')) {
+    return `${cleanUrl}/api`;
+  }
+  return cleanUrl;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface HealthCheckResponse {
   status: string;
