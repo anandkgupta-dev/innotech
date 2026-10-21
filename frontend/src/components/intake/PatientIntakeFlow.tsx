@@ -16,6 +16,7 @@ import { StepReview } from './StepReview';
 import { IntakeSuccessModal } from './IntakeSuccessModal';
 import { EmergencyRedFlagBanner } from './EmergencyRedFlagBanner';
 import { Building2, X } from 'lucide-react';
+import { submitPatientIntakeToBackend } from '../../services/api';
 
 interface PatientIntakeFlowProps {
   isDemoMode: boolean;
@@ -122,6 +123,40 @@ export const PatientIntakeFlow: React.FC<PatientIntakeFlowProps> = ({
     };
   });
 
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmitIntake = async () => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const response = await submitPatientIntakeToBackend(intakeState);
+      if (response.success && response.data) {
+        setIntakeState((prev) => ({
+          ...prev,
+          step: 'success',
+          completedAt: response.data?.createdAt || new Date().toISOString(),
+          serverIntakeId: response.data?.intakeId,
+          tokenNumber: response.data?.tokenNumber,
+          databaseSaved: true,
+        }));
+        sessionStorage.removeItem('medikiosk_intake_draft');
+      } else {
+        const errorDetail =
+          response.error ||
+          (response.validationErrors && response.validationErrors.length > 0
+            ? response.validationErrors.join(', ')
+            : 'Unable to persist record to database.');
+        setSubmitError(errorDetail);
+      }
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : 'An unexpected network error occurred while saving intake.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const saveToSession = () => {
     sessionStorage.setItem('medikiosk_intake_draft', JSON.stringify(intakeState));
@@ -353,14 +388,10 @@ export const PatientIntakeFlow: React.FC<PatientIntakeFlowProps> = ({
             intakeState={intakeState}
             onEditSection={(step) => goToStep(step)}
             onBack={() => goToStep('history')}
-            onSubmit={() => {
-              setIntakeState((prev) => ({
-                ...prev,
-                step: 'success',
-                completedAt: new Date().toISOString(),
-              }));
-              sessionStorage.removeItem('medikiosk_intake_draft');
-            }}
+            onSubmit={handleSubmitIntake}
+            isSubmitting={isSubmitting}
+            submitError={submitError}
+            onClearError={() => setSubmitError(null)}
           />
         )}
 

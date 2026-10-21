@@ -24,9 +24,11 @@ export async function connectDB(): Promise<void> {
 
     console.log('✅ [MediKiosk DB] Successfully connected to MongoDB Atlas database: "medikiosk"');
   } catch (error) {
-    console.error('❌ [MediKiosk DB] Connection failed:');
+    console.error('❌ [MediKiosk DB] Connection failed.');
     if (error instanceof Error) {
-      console.error(`   Error message: ${error.message}`);
+      // Mask any embedded credentials or URLs to prevent accidental credential leakage
+      const sanitized = error.message.replace(/(mongodb(?:\+srv)?:\/\/[^:]+:)([^@]+)(@)/gi, '$1****$3');
+      console.error(`   Error details: ${sanitized}`);
     } else {
       console.error('   An unexpected database error occurred.');
     }

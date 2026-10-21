@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { connectDB, isDbConnected, getDbStatusText } from './config/db.js';
+import patientRoutes from './routes/patientRoutes.js';
 
 // Load environment variables from .env
 dotenv.config();
@@ -12,13 +13,33 @@ const PORT = process.env.PORT || 5000;
 
 // Security & Parsing middleware
 app.use(helmet());
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
+];
+if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // fallback allow for local dev
+      }
+    },
     credentials: true,
   })
 );
-app.use(express.json());
+
+// Enforce sensible payload size limits (1mb is plenty for text clinical intake)
+app.use(express.json({ limit: '1mb' }));
 
 // Initial Health-Check Endpoint
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -39,6 +60,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
+// Mount Patient Intake Routes
+app.use('/api/patients', patientRoutes);
+
 // Root Information Endpoint
 app.get('/', (_req: Request, res: Response) => {
   res.json({
@@ -55,6 +79,7 @@ async function startServer() {
   app.listen(PORT, () => {
     console.log(`🏥 [MediKiosk API] Server listening on http://127.0.0.1:${PORT}`);
     console.log(`🩺 [MediKiosk API] Health check endpoint: http://127.0.0.1:${PORT}/api/health`);
+    console.log(`📋 [MediKiosk API] Intake endpoint: POST http://127.0.0.1:${PORT}/api/patients/intake`);
   });
 }
 

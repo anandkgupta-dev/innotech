@@ -116,4 +116,7 @@ export interface PatientIntakeState {
   history: GuidedHistoryData;
   emergency: EmergencyRedFlagState;
   completedAt?: string;
+  serverIntakeId?: string;
+  tokenNumber?: string;
+  databaseSaved?: boolean;
 }

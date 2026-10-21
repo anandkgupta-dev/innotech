@@ -270,6 +270,10 @@ export const translations = {
       'I confirm that the above clinical details are accurate to the best of my knowledge and can be provided to my consulting doctor.',
     reviewSubmitBtn: 'Submit Medical Intake to Doctor Desk',
     errReviewConfirmRequired: 'Please confirm that the information is accurate before submitting.',
+    submittingIntake: 'Saving record to hospital database...',
+    submissionFailedTitle: 'Submission Error',
+    submissionRetryBtn: 'Retry Submission',
+    databaseSavedBadge: 'Persisted to Hospital Database (MongoDB Atlas)',
 
     // Success Screen
     intakeSuccessTitle: 'Clinical Intake Registered Successfully!',
@@ -552,6 +556,10 @@ export const translations = {
       'मैं पुष्टि करता/करती हूँ कि ऊपर दी गई सभी जानकारी मेरी जानकारी के अनुसार सत्य है और इसे मेरे परामर्श डॉक्टर को दिखाया जा सकता है।',
     reviewSubmitBtn: 'डॉक्टर डेस्क पर विवरण जमा करें',
     errReviewConfirmRequired: 'विवरण जमा करने से पहले कृपया पुष्टि बॉक्स पर टिक करें।',
+    submittingIntake: 'अस्पताल डेटाबेस में सहेजा जा रहा है...',
+    submissionFailedTitle: 'जमा करने में त्रुटि',
+    submissionRetryBtn: 'पुनः प्रयास करें',
+    databaseSavedBadge: 'अस्पताल डेटाबेस में सुरक्षित (MongoDB Atlas)',
 
     // Success Screen
     intakeSuccessTitle: 'क्लिनिकल विवरण सफलतापूर्वक पंजीकृत!',

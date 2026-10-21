@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   Server, 
@@ -7,34 +7,64 @@ import {
   Database, 
   Layers
 } from 'lucide-react';
+import { checkBackendHealth } from '../../services/api';
+import type { HealthCheckResponse } from '../../services/api';
 
 export const SystemStatus: React.FC = () => {
   const { t, language } = useLanguage();
+  const [health, setHealth] = useState<HealthCheckResponse | null>(null);
+
+  useEffect(() => {
+    checkBackendHealth().then((res) => {
+      if (res) setHealth(res);
+    });
+  }, []);
+
+  const getDbStatus = () => {
+    if (!health) {
+      return {
+        label: language === 'hi' ? 'बैकएंड स्टैंडबाय (पोर्ट 5000)' : 'Backend Standby (:5000)',
+        dotColor: 'bg-amber-400',
+      };
+    }
+    if (health.database.connected) {
+      return {
+        label: language === 'hi' ? 'मोंगोडीबी एटलस (सक्रिय)' : 'MongoDB Atlas (Connected)',
+        dotColor: 'bg-emerald-500',
+      };
+    }
+    return {
+      label: language === 'hi' ? 'बैकएंड सक्रिय (एटलस प्रतीक्षारत)' : 'Backend Active (Atlas Standby)',
+      dotColor: 'bg-amber-400',
+    };
+  };
+
+  const dbStatus = getDbStatus();
 
   const statuses = [
     {
       title: language === 'hi' ? 'कियोस्क टर्मिनल' : 'Kiosk Interface',
       status: language === 'hi' ? 'सक्रिय एवं सुरक्षित (React 19)' : 'Active (React 19 + Vite)',
       icon: Layers,
-      state: 'online',
+      dotColor: 'bg-emerald-500',
     },
     {
       title: language === 'hi' ? 'स्पीच रिकॉग्निशन' : 'Voice Input Adapter',
       status: language === 'hi' ? 'वेब स्पीच एपीआई तैयार' : 'Web Speech API Ready',
       icon: Mic,
-      state: 'ready',
+      dotColor: 'bg-emerald-500',
     },
     {
       title: language === 'hi' ? 'दस्तावेज़ ओसीआर' : 'Document OCR Engine',
       status: language === 'hi' ? 'स्थानीय एडाप्टर मोड' : 'Local Adapter Standby',
       icon: FileText,
-      state: 'ready',
+      dotColor: 'bg-emerald-500',
     },
     {
       title: language === 'hi' ? 'डेटाबेस एवं बैकएंड' : 'Clinical Storage',
-      status: language === 'hi' ? 'चरण १ सैंडबॉक्स (स्थानीय)' : 'Phase 1 Local Sandbox',
+      status: dbStatus.label,
       icon: Database,
-      state: 'sandbox',
+      dotColor: dbStatus.dotColor,
     },
   ];
 
@@ -69,7 +99,7 @@ export const SystemStatus: React.FC = () => {
                     {item.title}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${item.dotColor || 'bg-emerald-500'}`}></span>
                     <span className="text-[11px] text-slate-600 truncate">
                       {item.status}
                     </span>

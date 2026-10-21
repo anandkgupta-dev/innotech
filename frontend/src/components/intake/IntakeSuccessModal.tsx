@@ -17,7 +17,8 @@ export const IntakeSuccessModal: React.FC<IntakeSuccessModalProps> = ({
   const { t, language } = useLanguage();
   const { registration, complaint } = intakeState;
 
-  const tokenNumber = `TK-${registration.patientId.slice(-4) || '1042'}`;
+  const tokenNumber =
+    intakeState.tokenNumber || `TK-${registration.patientId.slice(-4) || '1042'}`;
   const currentTime = React.useMemo(() => {
     return new Date().toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-IN', {
       hour: '2-digit',
@@ -50,6 +51,19 @@ export const IntakeSuccessModal: React.FC<IntakeSuccessModalProps> = ({
             {currentTime}
           </span>
         </div>
+
+        {/* Database Persistence Confirmation Banner */}
+        {intakeState.serverIntakeId && (
+          <div className="mt-4 p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-emerald-800 font-semibold flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{t('databaseSavedBadge')}</span>
+            </span>
+            <span className="font-mono font-bold text-emerald-900 bg-emerald-100/70 px-2 py-0.5 rounded">
+              ID: {intakeState.serverIntakeId}
+            </span>
+          </div>
+        )}
 
         {/* Large Token Badge */}
         <div className="py-6 text-center bg-sky-50/60 rounded-2xl my-4 border border-sky-100">

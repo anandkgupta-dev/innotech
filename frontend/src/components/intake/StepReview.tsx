@@ -9,7 +9,9 @@ import {
   User, 
   HeartPulse, 
   Activity, 
-  Send
+  Send,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 
 interface StepReviewProps {
@@ -17,6 +19,9 @@ interface StepReviewProps {
   onEditSection: (step: IntakeStepId) => void;
   onSubmit: () => void;
   onBack: () => void;
+  isSubmitting?: boolean;
+  submitError?: string | null;
+  onClearError?: () => void;
 }
 
 export const StepReview: React.FC<StepReviewProps> = ({
@@ -24,6 +29,9 @@ export const StepReview: React.FC<StepReviewProps> = ({
   onEditSection,
   onSubmit,
   onBack,
+  isSubmitting = false,
+  submitError = null,
+  onClearError,
 }) => {
   const { t, language } = useLanguage();
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
@@ -32,11 +40,13 @@ export const StepReview: React.FC<StepReviewProps> = ({
   const { registration, complaint, history } = intakeState;
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
     if (!isConfirmed) {
       setErrorMessage(t('errReviewConfirmRequired'));
       return;
     }
     setErrorMessage(null);
+    if (onClearError) onClearError();
     onSubmit();
   };
 
@@ -273,12 +283,34 @@ export const StepReview: React.FC<StepReviewProps> = ({
         </div>
       )}
 
+      {submitError && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">{t('submissionFailedTitle')}</p>
+              <p className="text-amber-800 text-xs mt-0.5 leading-relaxed">{submitError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-200/70 hover:bg-amber-200 text-amber-900 font-bold text-xs transition-colors shrink-0 cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
+            <span>{t('submissionRetryBtn')}</span>
+          </button>
+        </div>
+      )}
+
       {/* Nav Controls */}
       <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-200">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
+          disabled={isSubmitting}
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{t('previousButton')}</span>
@@ -287,10 +319,24 @@ export const StepReview: React.FC<StepReviewProps> = ({
         <button
           type="button"
           onClick={handleSubmit}
-          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm sm:text-base transition-all shadow-sm cursor-pointer"
+          disabled={isSubmitting}
+          className={`inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base transition-all shadow-sm ${
+            isSubmitting
+              ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+              : 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
+          }`}
         >
-          <Send className="w-4 h-4" />
-          <span>{t('reviewSubmitBtn')}</span>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>{t('submittingIntake')}</span>
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              <span>{t('reviewSubmitBtn')}</span>
+            </>
+          )}
         </button>
       </div>
     </div>
