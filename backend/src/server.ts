@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { connectDB, ensureDbConnected, isDbConnected, getDbStatusText } from './config/db.js';
+import { connectDB, ensureDbConnected, isDbConnected, getDbStatusText, getLastDbError } from './config/db.js';
 import patientRoutes from './routes/patientRoutes.js';
 
 // Load environment variables from .env
@@ -22,6 +22,8 @@ const defaultLocalOrigins = [
   'http://127.0.0.1:5173',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
 ];
 
 const configuredOrigins: string[] = [];
@@ -32,9 +34,21 @@ if (process.env.FRONTEND_URL) {
   });
 }
 
-const allowedOrigins = isProduction
-  ? configuredOrigins
-  : [...defaultLocalOrigins, ...configuredOrigins];
+const isOriginAllowed = (origin: string): boolean => {
+  // Explicitly configured origins (from FRONTEND_URL)
+  if (configuredOrigins.includes(origin)) return true;
+
+  // Local development origins
+  if (defaultLocalOrigins.includes(origin)) return true;
+
+  // Any Vercel deployment (preview or production domains)
+  if (/^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.vercel\.app$/i.test(origin)) return true;
+
+  // Localhost / 127.0.0.1 on any port
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+
+  return false;
+};
 
 app.use(
   cors({
@@ -43,16 +57,18 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      if (allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
       if (!isProduction) {
         return callback(null, true); // fallback for local dev
       }
-      // Strict rejection in production
-      return callback(new Error(`CORS blocked: Origin ${origin} not permitted.`));
+      // Graceful rejection without throwing an unhandled Error (which causes 500 HTML pages)
+      return callback(null, false);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   })
 );
 
@@ -69,6 +85,7 @@ app.use(async (_req, _res, next) => {
 const handleHealth = (_req: Request, res: Response) => {
   const dbConnected = isDbConnected();
   const dbStatus = getDbStatusText();
+  const lastError = getLastDbError();
 
   res.status(200).json({
     status: 'ok',
@@ -79,6 +96,8 @@ const handleHealth = (_req: Request, res: Response) => {
       status: dbStatus,
       connected: dbConnected,
       name: 'medikiosk',
+      hasMongoUri: Boolean(process.env.MONGODB_URI),
+      lastError: lastError || (dbConnected ? null : 'Awaiting initial connection or IP whitelist'),
     },
     environment: process.env.NODE_ENV || 'development',
   });
@@ -97,6 +116,15 @@ app.get('/', (_req: Request, res: Response) => {
     message: 'MediKiosk Clinical Intake Backend Service',
     healthCheck: '/api/health',
     status: 'online',
+  });
+});
+
+// Central JSON error handler (prevents default Express HTML error responses)
+app.use((err: any, _req: Request, res: Response, _next: any) => {
+  console.error('Unhandled server error:', err);
+  res.status(err?.status || 500).json({
+    success: false,
+    error: err?.message || 'Internal Server Error',
   });
 });
 

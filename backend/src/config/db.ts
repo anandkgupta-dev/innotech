@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 let reconnectTimer: NodeJS.Timeout | null = null;
+let lastDbError: string | null = null;
+
+export function getLastDbError(): string | null {
+  return lastDbError;
+}
 
 /**
  * Connect to MongoDB Atlas securely.
@@ -11,6 +16,7 @@ export async function connectDB(): Promise<void> {
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri) {
+    lastDbError = 'MONGODB_URI environment variable is not defined.';
     console.warn(
       '⚠️ [MediKiosk DB] MONGODB_URI environment variable is not defined. Database connection skipped (operating in disconnected sandbox mode).'
     );
@@ -46,6 +52,7 @@ async function attemptConnection(): Promise<boolean> {
     });
 
     console.log('✅ [MediKiosk DB] Successfully connected to MongoDB Atlas database: "medikiosk"');
+    lastDbError = null;
     if (reconnectTimer) {
       clearInterval(reconnectTimer);
       reconnectTimer = null;
@@ -57,19 +64,24 @@ async function attemptConnection(): Promise<boolean> {
       // Categorize error cleanly without exposing secrets
       const msg = error.message;
       if (msg.includes('whitelisted') || msg.includes('ssl alert') || msg.includes('SSL routines') || msg.includes('ReplicaSetNoPrimary')) {
+        lastDbError = 'Atlas Network Access: Serverless IP not allowed (0.0.0.0/0 required).';
         console.error('   Category: [Atlas Network Access / IP Whitelist]');
         console.error('   Action: Whitelist your current public IP in MongoDB Atlas Security -> Network Access.');
       } else if (msg.includes('AuthenticationFailed') || msg.includes('auth failed') || (error as any).code === 18) {
+        lastDbError = 'Authentication Error: Invalid username or password in MONGODB_URI.';
         console.error('   Category: [Authentication Error]');
         console.error('   Action: Verify database username and password in backend/.env MONGODB_URI.');
       } else if (msg.includes('ENOTFOUND') || msg.includes('querySrv')) {
+        lastDbError = 'DNS Resolution Error: Cluster hostname could not be resolved.';
         console.error('   Category: [DNS Resolution Error]');
         console.error('   Action: Cluster hostname could not be resolved. Check internet and cluster address.');
       } else {
         const sanitized = msg.replace(/(mongodb(?:\+srv)?:\/\/[^:]+:)([^@]+)(@)/gi, '$1****$3');
+        lastDbError = `Connection Error: ${sanitized}`;
         console.error(`   Error details: ${sanitized}`);
       }
     } else {
+      lastDbError = 'An unexpected database connection error occurred.';
       console.error('   An unexpected database error occurred.');
     }
 
@@ -129,6 +141,7 @@ export async function ensureDbConnected(): Promise<boolean> {
     return true;
   }
   if (!process.env.MONGODB_URI) {
+    lastDbError = 'MONGODB_URI environment variable is not defined in project settings.';
     return false;
   }
   if (activeConnectPromise) {
