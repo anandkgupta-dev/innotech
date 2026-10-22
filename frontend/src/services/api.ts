@@ -59,6 +59,8 @@ export async function checkBackendHealth(): Promise<HealthCheckResponse | null> 
     clearTimeout(timeoutId);
 
     if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
     return await res.json();
   } catch {
     return null;
@@ -130,6 +132,15 @@ export async function submitPatientIntakeToBackend(
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return {
+        success: false,
+        error: `Backend endpoint returned non-JSON response (${res.status}). Verify that VITE_API_BASE_URL is set to your live backend URL in Vercel settings and redeploy.`,
+        code: 'INVALID_RESPONSE',
+      };
+    }
 
     const json = await res.json();
     return json;
