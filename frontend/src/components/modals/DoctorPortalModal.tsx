@@ -18,7 +18,9 @@ import {
   FileSearch,
   CheckCircle2,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   loginClinician, 
@@ -61,6 +63,7 @@ export const DoctorPortalModal: React.FC<DoctorPortalModalProps> = ({
 
   const [staffIdInput, setStaffIdInput] = useState<string>('DR-RAO-14');
   const [passcodeInput, setPasscodeInput] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -117,10 +120,20 @@ export const DoctorPortalModal: React.FC<DoctorPortalModalProps> = ({
   // Handle staff login
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setAuthLoading(true);
     setAuthError(null);
 
-    const res = await loginClinician(staffIdInput, passcodeInput);
+    if (!staffIdInput.trim()) {
+      setAuthError('Please enter your Clinician Staff ID.');
+      return;
+    }
+    if (!passcodeInput.trim()) {
+      setAuthError('Please enter your staff access passcode.');
+      return;
+    }
+
+    setAuthLoading(true);
+
+    const res = await loginClinician(staffIdInput.trim(), passcodeInput);
     if (res.success && res.token) {
       setToken(res.token);
       setSession(res.session || null);
@@ -356,14 +369,28 @@ export const DoctorPortalModal: React.FC<DoctorPortalModalProps> = ({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Staff Access Passcode
                 </label>
-                <input
-                  type="password"
-                  value={passcodeInput}
-                  onChange={(e) => setPasscodeInput(e.target.value)}
-                  placeholder="Enter staff passcode"
-                  className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={passcodeInput}
+                    onChange={(e) => {
+                      setPasscodeInput(e.target.value);
+                      if (authError) setAuthError(null);
+                    }}
+                    placeholder="Enter staff passcode"
+                    className="w-full text-xs sm:text-sm pl-3 pr-10 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    aria-label={showPassword ? 'Hide passcode' : 'Show passcode'}
+                    title={showPassword ? 'Hide passcode' : 'Show passcode'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <button

@@ -3,9 +3,6 @@ import { LanguageProvider } from './context/LanguageContext';
 import { Header } from './components/common/Header';
 import { EmergencyAlert } from './components/common/EmergencyAlert';
 import { HeroSection } from './components/landing/HeroSection';
-import { WorkflowSteps } from './components/landing/WorkflowSteps';
-import { InstitutionalScope } from './components/landing/InstitutionalScope';
-import { SystemStatus } from './components/landing/SystemStatus';
 import { Footer } from './components/common/Footer';
 import { PatientIntakeModal } from './components/modals/PatientIntakeModal';
 import { DoctorPortalModal } from './components/modals/DoctorPortalModal';
@@ -22,7 +19,6 @@ const MainApp: React.FC = () => {
 
   const handleOpenPatientIntake = (demoMode: boolean) => {
     setPatientDemoMode(demoMode);
-    // Directly launch intake flow or modal
     setActiveView('intake');
   };
 
@@ -56,15 +52,6 @@ const MainApp: React.FC = () => {
           onOpenPatientIntake={handleOpenPatientIntake}
           onOpenDoctorPortal={handleOpenDoctorPortal}
         />
-
-        {/* 5-Step Patient Intake Journey */}
-        <WorkflowSteps />
-
-        {/* Institutional Governance, Physician Oversight & AYUSH Scope */}
-        <InstitutionalScope />
-
-        {/* System Readiness & Phase 1 Environment Status */}
-        <SystemStatus />
       </main>
 
       {/* Hospital Footer */}

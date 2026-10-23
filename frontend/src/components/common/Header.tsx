@@ -5,8 +5,7 @@ import {
   PhoneCall, 
   Volume2, 
   VolumeX, 
-  Calendar, 
-  ShieldCheck
+  Calendar
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -37,10 +36,6 @@ export const Header: React.FC = () => {
               <Calendar className="w-3.5 h-3.5 text-sky-400" />
               <span>{t('dateLabel')}: {currentDate}</span>
             </div>
-            <div className="hidden sm:flex items-center gap-1 text-emerald-400">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{t('complianceBadge')}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -50,20 +45,17 @@ export const Header: React.FC = () => {
         <div className="flex items-center justify-between gap-4">
           {/* Logo & Brand Identity */}
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-lg bg-sky-700 text-white flex items-center justify-center shadow-xs shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-sky-700 text-white flex items-center justify-center shadow-xs shrink-0">
               <Building2 className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 text-lg sm:text-xl tracking-tight">
+                <span className="font-bold text-slate-900 text-xl tracking-tight">
                   MediKiosk
-                </span>
-                <span className="px-2 py-0.5 text-xs font-semibold bg-sky-50 text-sky-800 rounded-md border border-sky-200">
-                  मेडीकियोस्क
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
-                {t('platformTagline')}
+                {language === 'hi' ? 'ओपीडी मरीज स्व-पंजीकरण एवं क्लिनिकल इनटेक' : 'Hospital Outpatient Clinical Intake & Registration'}
               </p>
             </div>
           </div>

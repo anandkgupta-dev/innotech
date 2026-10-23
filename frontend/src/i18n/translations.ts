@@ -18,12 +18,41 @@ export const translations = {
       'If you have severe chest pain, extreme breathlessness, sudden speech loss, acute trauma, or uncontrollable bleeding, DO NOT use this kiosk. Please report immediately to the Emergency Casualty Ward (Counter 1) or notify hospital nursing staff.',
     emergencyActionBtn: 'Find Emergency Desk',
 
-    // Hero Section
+    // Redesigned Hospital Landing Page
+    fasterRegistrationTitle: 'Faster, Simpler Patient Registration',
+    fasterRegistrationSubtitle:
+      'Welcome to the Outpatient Department (OPD) self-service kiosk. Complete your initial check-in, submit your symptoms, and prepare your clinical details before meeting your doctor.',
+    benefitQuickRegTitle: 'Quick Registration',
+    benefitQuickRegDesc: 'Enter your details or OPD number in under 3 minutes.',
+    benefitDocUploadTitle: 'Medical Document Upload',
+    benefitDocUploadDesc: 'Attach previous prescriptions and lab investigation reports.',
+    benefitSecureRecordsTitle: 'Secure Clinical Records',
+    benefitSecureRecordsDesc: 'Your intake is sent directly to authorized hospital physicians.',
+    
+    welcomeCardTitle: 'Welcome to MediKiosk',
+    welcomeCardSubtitle: 'Please select your role to proceed',
+    rolePatientTitle: 'Start Patient Intake',
+    rolePatientSubtitle: 'Self-check-in, symptom history & OPD token',
+    rolePatientBadge: 'Patient Entry',
+    roleDoctorTitle: 'Staff Login',
+    roleDoctorSubtitle: 'Doctor portal, patient queue review & sign-off',
+    roleDoctorBadge: 'Clinical Staff',
+    receptionHelpNotice: 'Need assistance? Hospital reception and patient helpdesk is at Counter 1.',
+    
+    // Bottom 3 Compact Feature Cards
+    featureDocUploadTitle: 'Upload Medical Documents',
+    featureDocUploadDesc: 'Digitize paper prescriptions, lab reports, and discharge summaries for your doctor.',
+    featureSecureRecordsTitle: 'Secure Patient Records',
+    featureSecureRecordsDesc: 'Health intake data is securely stored and accessible only to authorized attending clinicians.',
+    featureDoctorReviewTitle: 'Doctor Review',
+    featureDoctorReviewDesc: 'Medical officers examine structured history drafts, verify findings, and complete clinical sign-off.',
+
+    // Hero Section (Legacy compatibility)
     welcomeHeading: 'Welcome to Outpatient Clinical Intake',
     welcomeSubheading:
       'Save time before meeting your doctor. Complete your medical history, record current symptoms, and scan previous prescriptions or test reports in a few simple steps.',
-    kioskModeBadge: 'Self-Service Patient Kiosk v1.0',
-    complianceBadge: 'HIPAA & ABDM Architecture Ready',
+    kioskModeBadge: 'Self-Service Patient Kiosk',
+    complianceBadge: 'Hospital Clinical Intake System',
 
     // Primary Action Cards
     patientCardTitle: 'Patient Self-Registration & Intake',
@@ -305,12 +334,41 @@ export const translations = {
       'यदि आपको सीने में अत्यधिक दर्द, सांस लेने में गंभीर तकलीफ, अचानक बोलने में असमर्थता, गहरा घाव या भारी रक्तस्राव हो रहा है, तो इस कियोस्क का उपयोग न करें। कृपया तुरंत आपातकालीन आकस्मिक विभाग (काउंटर नं. 1) पर संपर्क करें या अस्पताल के नर्सिंग स्टाफ को सूचित करें।',
     emergencyActionBtn: 'आपातकालीन डेस्क देखें',
 
-    // Hero Section
+    // Redesigned Hospital Landing Page
+    fasterRegistrationTitle: 'त्वरित एवं सरल मरीज पंजीकरण',
+    fasterRegistrationSubtitle:
+      'अस्पताल बाह्य रोगी विभाग (OPD) स्व-सेवा कियोस्क में आपका स्वागत है। डॉक्टर से परामर्श से पहले कुछ ही मिनटों में अपना चेक-इन करें, अपनी परेशानी दर्ज करें और पूर्व पर्चियां संलग्न करें।',
+    benefitQuickRegTitle: 'त्वरित पंजीकरण',
+    benefitQuickRegDesc: '3 मिनट से भी कम समय में ओपीडी पंजीकरण या पर्ची संख्या दर्ज करें।',
+    benefitDocUploadTitle: 'दस्तावेज एवं पर्ची संलग्न',
+    benefitDocUploadDesc: 'पुरानी डॉक्टरों की पर्चियां और जांच रिपोर्ट डॉक्टर के लिए जोड़ें।',
+    benefitSecureRecordsTitle: 'सुरक्षित क्लिनिकल रिकॉर्ड',
+    benefitSecureRecordsDesc: 'आपका स्वास्थ्य विवरण सीधे संबंधित अधिकृत डॉक्टर तक पहुंचता है।',
+    
+    welcomeCardTitle: 'मेडीकियोस्क में आपका स्वागत है',
+    welcomeCardSubtitle: 'आगे बढ़ने के लिए अपनी भूमिका चुनें',
+    rolePatientTitle: 'मरीज पंजीकरण शुरू करें',
+    rolePatientSubtitle: 'ओपीडी चेक-इन, स्वास्थ्य इतिहास एवं टोकन प्राप्ति',
+    rolePatientBadge: 'मरीज प्रवेश',
+    roleDoctorTitle: 'स्टाफ लॉगिन',
+    roleDoctorSubtitle: 'डॉक्टर पोर्टल, मरीज कतार समीक्षा एवं क्लिनिकल हस्ताक्षर',
+    roleDoctorBadge: 'क्लिनिकल स्टाफ',
+    receptionHelpNotice: 'सहायता चाहिए? अस्पताल सहायता काउंटर नं. 1 मुख्य हॉल में उपलब्ध है।',
+    
+    // Bottom 3 Compact Feature Cards
+    featureDocUploadTitle: 'दस्तावेज एवं पर्ची अपलोड',
+    featureDocUploadDesc: 'पुरानी पर्चियों, डिस्चार्ज सारांश और लैब रिपोर्ट को डॉक्टर के अवलोकन हेतु संलग्न करें।',
+    featureSecureRecordsTitle: 'सुरक्षित मरीज रिकॉर्ड',
+    featureSecureRecordsDesc: 'स्वास्थ्य विवरण अस्पताल के सुरक्षित डेटाबेस में केवल अधिकृत डॉक्टरों के लिए उपलब्ध रहता है।',
+    featureDoctorReviewTitle: 'चिकित्सक समीक्षा एवं अनुमोदन',
+    featureDoctorReviewDesc: 'डॉक्टर मरीज द्वारा दिए गए इतिहास की जांच करते हैं और क्लिनिकल नोट्स स्वीकृत करते हैं।',
+
+    // Hero Section (Legacy compatibility)
     welcomeHeading: 'ओपीडी मरीज स्व-पंजीकरण एवं इतिहास प्रणाली',
     welcomeSubheading:
       'डॉक्टर से मिलने से पहले समय की बचत करें। कुछ आसान चरणों में अपनी बीमारी का विवरण दें, पूर्व दवाइयों की जानकारी दर्ज करें और पुरानी पर्चियों को स्कैन करें।',
-    kioskModeBadge: 'मरीज स्व-सेवा कियोस्क v1.0',
-    complianceBadge: 'आयुष्मान भारत डिजिटल मिशन (ABDM) तैयार संरचना',
+    kioskModeBadge: 'मरीज स्व-सेवा कियोस्क',
+    complianceBadge: 'अस्पताल क्लिनिकल इनटेक सिस्टम',
 
     // Primary Action Cards
     patientCardTitle: 'मरीज स्व-पंजीकरण एवं लक्षण विवरण',
