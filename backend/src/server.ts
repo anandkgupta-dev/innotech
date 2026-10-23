@@ -5,8 +5,16 @@ import dotenv from 'dotenv';
 import { connectDB, ensureDbConnected, isDbConnected, getDbStatusText, getLastDbError } from './config/db.js';
 import patientRoutes from './routes/patientRoutes.js';
 
-// Load environment variables from .env
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from cwd, backend/.env, or parent paths
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,7 +24,7 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL
 const helmetMiddleware = typeof helmet === 'function' ? helmet : ((helmet as any).default || helmet);
 app.use((helmetMiddleware as any)());
 
-// Build allowed origins list
+// Build allowed origins list: strictly restricted to intended frontend deployments
 const defaultLocalOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -26,27 +34,36 @@ const defaultLocalOrigins = [
   'http://127.0.0.1:3000',
 ];
 
-const configuredOrigins: string[] = [];
+// Specific known MediKiosk frontend deployment domains
+const knownMediKioskOrigins = [
+  'https://medikiosk-frontend-iota.vercel.app',
+  'https://medikiosk-frontend.vercel.app',
+];
+
+const configuredOrigins: string[] = [...knownMediKioskOrigins];
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(',').forEach((url) => {
     const trimmed = url.trim().replace(/\/+$/, '');
-    if (trimmed) configuredOrigins.push(trimmed);
+    if (trimmed && !configuredOrigins.includes(trimmed)) {
+      configuredOrigins.push(trimmed);
+    }
   });
 }
 
 const isOriginAllowed = (origin: string): boolean => {
-  // Explicitly configured origins (from FRONTEND_URL)
+  // 1. Explicitly configured origins (from FRONTEND_URL & known MediKiosk domains)
   if (configuredOrigins.includes(origin)) return true;
 
-  // Local development origins
+  // 2. MediKiosk project-specific preview deployments strictly matching medikiosk-frontend-*
+  if (/^https:\/\/medikiosk-frontend(?:-[a-z0-9]+)*\.vercel\.app$/i.test(origin)) {
+    return true;
+  }
+
+  // 3. Local development origins (localhost / 127.0.0.1)
   if (defaultLocalOrigins.includes(origin)) return true;
-
-  // Any Vercel deployment (preview or production domains)
-  if (/^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.vercel\.app$/i.test(origin)) return true;
-
-  // Localhost / 127.0.0.1 on any port
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
 
+  // Reject all other origins (including other arbitrary *.vercel.app origins)
   return false;
 };
 
@@ -130,13 +147,18 @@ app.use((err: any, _req: Request, res: Response, _next: any) => {
 
 // Connect to MongoDB Atlas and start standalone server (when not running in serverless)
 async function startServer() {
-  await connectDB();
-
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`🏥 [MediKiosk API] Server listening on http://127.0.0.1:${PORT}`);
     console.log(`🩺 [MediKiosk API] Health check endpoint: http://127.0.0.1:${PORT}/api/health`);
     console.log(`📋 [MediKiosk API] Intake endpoint: POST http://127.0.0.1:${PORT}/api/patients/intake`);
   });
+
+  // Attempt DB connection in background without blocking server startup
+  connectDB().catch((err) => {
+    console.warn('⚠️ [MediKiosk API] Initial DB connection warning:', err instanceof Error ? err.message : err);
+  });
+
+  return server;
 }
 
 // Only start listening on port if not running in a Vercel serverless environment

@@ -58,6 +58,38 @@ export interface IPatientIntake extends Document {
     acknowledged: boolean;
   };
 
+  // Doctor review and clinical sign-off
+  doctorNotes?: string;
+  review?: {
+    reviewedBy?: string;
+    reviewedAt?: Date;
+    isApproved: boolean;
+    status: 'pending' | 'under_review' | 'completed';
+  };
+
+  // Medical documents & OCR references (Phase 4 integration)
+  documents?: Array<{
+    documentId: string;
+    fileName: string;
+    fileType: string;
+    uploadedAt: Date;
+    ocrStatus: 'pending' | 'processing' | 'completed' | 'not_implemented';
+    extractedFields?: Record<string, unknown>;
+    unverifiedFields?: string[];
+  }>;
+
+  // AYUSH Assessment
+  ayushAssessment?: {
+    assessed: boolean;
+    prakriti?: string;
+    agni?: string;
+    koshtha?: string;
+    notes?: string;
+    assessedAt?: Date;
+    assessedBy?: string;
+  };
+
+  isDemo?: boolean; // True for synthetic demo test records
   status: IntakeStatus;
   tokenNumber: string; // OPD queue token e.g., TK-0842
   createdAt: Date;
@@ -168,6 +200,51 @@ const PatientIntakeSchema: Schema = new Schema(
       isTriggered: { type: Boolean, default: false },
       reasons: [{ type: String, trim: true }],
       acknowledged: { type: Boolean, default: false },
+    },
+    doctorNotes: {
+      type: String,
+      trim: true,
+      maxlength: 5000,
+      default: '',
+    },
+    review: {
+      reviewedBy: { type: String, trim: true, default: '' },
+      reviewedAt: { type: Date },
+      isApproved: { type: Boolean, default: false },
+      status: {
+        type: String,
+        enum: ['pending', 'under_review', 'completed'],
+        default: 'pending',
+      },
+    },
+    documents: [
+      {
+        documentId: { type: String, required: true },
+        fileName: { type: String, required: true },
+        fileType: { type: String, default: 'application/pdf' },
+        uploadedAt: { type: Date, default: Date.now },
+        ocrStatus: {
+          type: String,
+          enum: ['pending', 'processing', 'completed', 'not_implemented'],
+          default: 'not_implemented',
+        },
+        extractedFields: { type: Schema.Types.Mixed, default: {} },
+        unverifiedFields: [{ type: String }],
+      },
+    ],
+    ayushAssessment: {
+      assessed: { type: Boolean, default: false },
+      prakriti: { type: String, trim: true },
+      agni: { type: String, trim: true },
+      koshtha: { type: String, trim: true },
+      notes: { type: String, trim: true },
+      assessedAt: { type: Date },
+      assessedBy: { type: String, trim: true },
+    },
+    isDemo: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     status: {
       type: String,

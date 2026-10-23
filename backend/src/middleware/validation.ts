@@ -116,3 +116,65 @@ export function validateIntakePayload(
 
   next();
 }
+
+export interface ValidatedDoctorReviewBody {
+  doctorNotes?: string;
+  isApproved?: boolean;
+  reviewedBy?: string;
+  status?: 'pending' | 'under_review' | 'completed';
+  allowAmendment?: boolean;
+}
+
+export function validateDoctorReview(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  const body = req.body as Partial<ValidatedDoctorReviewBody>;
+  const errors: string[] = [];
+
+  if (!body || typeof body !== 'object') {
+    res.status(400).json({
+      success: false,
+      error: 'Invalid request body for doctor review.',
+    });
+    return;
+  }
+
+  if (body.doctorNotes !== undefined) {
+    if (typeof body.doctorNotes !== 'string') {
+      errors.push('doctorNotes must be a string.');
+    } else if (body.doctorNotes.length > 5000) {
+      errors.push('doctorNotes exceeds maximum limit of 5000 characters.');
+    }
+  }
+
+  if (body.isApproved !== undefined && typeof body.isApproved !== 'boolean') {
+    errors.push('isApproved must be a boolean.');
+  }
+
+  if (body.reviewedBy !== undefined) {
+    if (typeof body.reviewedBy !== 'string') {
+      errors.push('reviewedBy must be a string.');
+    } else if (body.reviewedBy.length > 120) {
+      errors.push('reviewedBy exceeds maximum length of 120 characters.');
+    }
+  }
+
+  if (body.status !== undefined) {
+    if (!['pending', 'under_review', 'completed'].includes(body.status)) {
+      errors.push('status must be one of: pending, under_review, completed.');
+    }
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({
+      success: false,
+      error: 'Validation failed for doctor review.',
+      validationErrors: errors,
+    });
+    return;
+  }
+
+  next();
+}

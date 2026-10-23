@@ -1,39 +1,65 @@
-/**
- * MediKiosk - Phase 3A Synthetic Test Script
- * Verifies backend health, synthetic patient intake persistence,
- * record retrieval by intakeId, and duplicate submission handling.
- * 
- * Usage: node backend/scripts/test-intake.js
- */
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const backendDir = path.resolve(__dirname, '..');
 
 const BASE_URL = process.env.API_URL || 'http://127.0.0.1:5000/api';
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function isServerRunning() {
+  try {
+    const res = await fetch(`${BASE_URL}/health`);
+    const data = await res.json();
+    return data && data.status === 'ok';
+  } catch {
+    return false;
+  }
+}
 
 async function runTests() {
   console.log('====================================================');
   console.log('🩺 MediKiosk Phase 3A: Backend Persistence Test');
   console.log('====================================================\n');
 
+  let serverProcess = null;
+  if (!(await isServerRunning())) {
+    console.log('[Setup] Starting local backend server on port 5000...');
+    serverProcess = spawn('node', ['dist/server.js'], { cwd: backendDir, stdio: 'ignore' });
+    for (let i = 0; i < 15; i++) {
+      await sleep(1000);
+      if (await isServerRunning()) break;
+    }
+  }
+
   // 1. Health check
   console.log('[Test 1] Querying GET /api/health...');
   let health;
   try {
-    const res = await fetch(`${BASE_URL}/health`);
-    health = await res.json();
+    for (let i = 0; i < 8; i++) {
+      const res = await fetch(`${BASE_URL}/health`);
+      health = await res.json();
+      if (health.database.connected) break;
+      await sleep(1000);
+    }
     console.log(`  ✓ Service Status: ${health.status}`);
     console.log(`  ✓ Database State: ${health.database.status} (connected: ${health.database.connected})`);
     console.log(`  ✓ Database Name:  ${health.database.name}`);
   } catch (err) {
     console.error('  ✗ Health check failed. Is the backend server running on port 5000?');
     console.error(`    Error: ${err.message}`);
+    if (serverProcess) serverProcess.kill();
     process.exit(1);
   }
 
   if (!health.database.connected) {
     console.log('\n⚠️  Notice: MongoDB Atlas is currently disconnected.');
-    console.log('   To connect Atlas:');
-    console.log('   1. Create backend/.env from backend/.env.example');
-    console.log('   2. Set MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/medikiosk?retryWrites=true&w=majority');
-    console.log('   3. The server will auto-reconnect and you can re-run this test script.');
+    if (serverProcess) serverProcess.kill();
     return;
   }
 
@@ -42,6 +68,7 @@ async function runTests() {
   const syntheticPayload = {
     clientSubmissionId: `TEST-SUB-${Date.now()}`,
     consentGiven: true,
+    isDemo: true,
     registration: {
       patientId: `SYNTH-${Math.floor(1000 + Math.random() * 9000)}`,
       fullName: 'Aarav Sharma (Synthetic Demo)',
@@ -105,10 +132,14 @@ async function runTests() {
     return;
   }
 
-  // 3. Retrieve record by intakeId
+  // 3. Retrieve record by intakeId (requires clinician auth)
   console.log(`\n[Test 3] Fetching record GET /api/patients/intake/${createdIntakeId}...`);
   try {
-    const getRes = await fetch(`${BASE_URL}/patients/intake/${createdIntakeId}`);
+    const getRes = await fetch(`${BASE_URL}/patients/intake/${createdIntakeId}`, {
+      headers: {
+        'x-clinician-key': process.env.CLINICIAN_PORTAL_KEY || 'medikiosk-clinical-staff-secure-2026',
+      },
+    });
     const getData = await getRes.json();
 
     if (getRes.status === 200 && getData.success) {
@@ -142,6 +173,31 @@ async function runTests() {
     }
   } catch (err) {
     console.error('  ✗ Duplicate test error:', err.message);
+  }
+
+  // 5. Cleanup synthetic test record
+  if (createdIntakeId) {
+    console.log(`\n[Test 5] Cleaning up synthetic test record ${createdIntakeId}...`);
+    try {
+      const delRes = await fetch(`${BASE_URL}/patients/synthetic/${createdIntakeId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-clinician-key': process.env.CLINICIAN_PORTAL_KEY || 'medikiosk-clinical-staff-secure-2026',
+        },
+      });
+      const delData = await delRes.json();
+      if (delRes.status === 200) {
+        console.log(`  ✓ Cleaned up synthetic test record ${createdIntakeId}`);
+      } else {
+        console.warn(`  ⚠️ Cleanup notice:`, delData);
+      }
+    } catch (delErr) {
+      console.warn(`  ⚠️ Cleanup error: ${delErr.message}`);
+    }
+  }
+
+  if (serverProcess) {
+    serverProcess.kill();
   }
 
   console.log('\n====================================================');

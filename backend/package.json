@@ -8,7 +8,8 @@
     "dev": "tsx watch --include .env src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test:intake": "node scripts/test-intake.js"
+    "test:intake": "node scripts/test-intake.js",
+    "test:doctor": "node scripts/test-doctor-portal.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -4,6 +4,12 @@ export type AuditAction =
   | 'INTAKE_CREATED'
   | 'INTAKE_ACCESSED'
   | 'INTAKE_DUPLICATE_PREVENTED'
+  | 'QUEUE_ACCESSED'
+  | 'INTAKE_REVIEWED'
+  | 'INTAKE_SIGNED'
+  | 'INTAKE_AMENDED'
+  | 'CLINICIAN_AUTH_SUCCESS'
+  | 'CLINICIAN_AUTH_FAILED'
   | 'HEALTH_CHECK';
 
 export interface IAuditLog extends Document {

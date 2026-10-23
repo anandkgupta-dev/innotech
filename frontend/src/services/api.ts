@@ -45,6 +45,91 @@ export interface IntakeSubmissionResponse {
   };
 }
 
+export interface ClinicianSession {
+  staffId: string;
+  name: string;
+  role: 'doctor' | 'nurse' | 'evaluator';
+  department: string;
+}
+
+export interface QueuePatientItem {
+  intakeId: string;
+  patientId: string;
+  fullName: string;
+  age: number;
+  gender: string;
+  preferredLanguage: string;
+  visitDate: string;
+  tokenNumber: string;
+  complaint?: {
+    selectedSymptoms: string[];
+    customDescription?: string;
+    durationValue: string;
+    durationUnit: string;
+    severity: string;
+  };
+  emergency?: {
+    isTriggered: boolean;
+    reasons: string[];
+    acknowledged: boolean;
+  };
+  status: 'submitted' | 'under_review' | 'completed' | 'cancelled';
+  review?: {
+    reviewedBy?: string;
+    reviewedAt?: string;
+    isApproved: boolean;
+    status: string;
+  };
+  isDemo?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FullPatientRecord extends QueuePatientItem {
+  dob?: string;
+  phone?: string;
+  consent?: {
+    given: boolean;
+    timestamp: string;
+    version: string;
+  };
+  history?: {
+    associatedSymptoms: string[];
+    existingConditions: string[];
+    pastSurgery: string;
+    pastSurgeryDetails: string;
+    currentMedications: string;
+    medicationsDetails: string;
+    knownAllergies: string;
+    allergiesDetails: string;
+    familyHistory: string[];
+    dietType: string;
+    tobaccoUse: string;
+    alcoholUse: string;
+    sleepQuality: string;
+    conditionalFollowUpNotes: string;
+  };
+  doctorNotes?: string;
+  documents?: Array<{
+    documentId: string;
+    fileName: string;
+    fileType: string;
+    uploadedAt: string;
+    ocrStatus: string;
+    extractedFields?: Record<string, unknown>;
+    unverifiedFields?: string[];
+  }>;
+  ayushAssessment?: {
+    assessed: boolean;
+    prakriti?: string;
+    agni?: string;
+    koshtha?: string;
+    notes?: string;
+    assessedAt?: string;
+    assessedBy?: string;
+  };
+}
+
 /**
  * Health check to verify backend API and database status.
  */
@@ -159,3 +244,101 @@ export async function submitPatientIntakeToBackend(
     };
   }
 }
+
+/**
+ * Authenticates clinician staff with the server and receives an authorized session token.
+ */
+export async function loginClinician(
+  staffId: string,
+  passcode: string
+): Promise<{
+  success: boolean;
+  token?: string;
+  session?: ClinicianSession;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/patients/clinician/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId, passcode }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || 'Authentication rejected by hospital server.' };
+    }
+    return json;
+  } catch {
+    return { success: false, error: 'Could not connect to hospital authentication service.' };
+  }
+}
+
+/**
+ * Fetches the active patient intake queue for clinician review.
+ */
+export async function fetchClinicianPatientQueue(
+  token: string,
+  includeDemo = true
+): Promise<{ success: boolean; data: QueuePatientItem[]; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/patients/queue?includeDemo=${includeDemo}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, data: [], error: json.error || 'Failed to fetch clinical queue.' };
+    }
+    return { success: true, data: json.data || [] };
+  } catch {
+    return { success: false, data: [], error: 'Unable to reach backend service.' };
+  }
+}
+
+/**
+ * Fetches the full patient record by database ID (intakeId or patientId).
+ */
+export async function fetchPatientDetail(
+  id: string,
+  token: string
+): Promise<{ success: boolean; data?: FullPatientRecord; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/patients/intake/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || 'Record not found or access denied.' };
+    }
+    return { success: true, data: json.data };
+  } catch {
+    return { success: false, error: 'Network error retrieving patient record.' };
+  }
+}
+
+/**
+ * Persists doctor examination notes and clinical sign-off to MongoDB.
+ */
+export async function saveDoctorReview(
+  id: string,
+  review: { doctorNotes?: string; isApproved?: boolean; reviewedBy?: string; allowAmendment?: boolean },
+  token: string
+): Promise<{ success: boolean; message?: string; error?: string; data?: any; code?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/patients/intake/${encodeURIComponent(id)}/review`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(review),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || 'Failed to persist doctor review.', code: json.code };
+    }
+    return json;
+  } catch {
+    return { success: false, error: 'Network error saving doctor review.' };
+  }
+}
+

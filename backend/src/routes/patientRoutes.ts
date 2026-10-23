@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { PatientIntake } from '../models/PatientIntake.js';
 import { createAuditEntry } from '../models/AuditLog.js';
 import { isDbConnected } from '../config/db.js';
-import { validateIntakePayload, ValidatedIntakeBody } from '../middleware/validation.js';
+import { validateIntakePayload, ValidatedIntakeBody, validateDoctorReview, ValidatedDoctorReviewBody } from '../middleware/validation.js';
+import { requireClinicianAuth, authenticateClinicianCredentials } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -14,6 +15,105 @@ function generateIntakeId(): string {
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   return `MED-${year}-${randomSuffix}`;
 }
+
+/**
+ * POST /api/patients/clinician/auth
+ * Server-verified authentication for authorized clinical staff.
+ */
+router.post('/clinician/auth', async (req: Request, res: Response): Promise<void> => {
+  const { staffId, passcode } = req.body || {};
+  const meta = {
+    ip: req.ip || req.socket.remoteAddress,
+    userAgent: req.get('user-agent'),
+  };
+  const result = await authenticateClinicianCredentials(staffId, passcode, meta);
+  if (!result.success) {
+    res.status(401).json({ success: false, error: result.error });
+    return;
+  }
+  res.status(200).json({
+    success: true,
+    token: result.token,
+    session: result.session,
+  });
+});
+
+/**
+ * GET /api/patients/queue
+ * Fetches the active patient intake queue for authorized clinical staff.
+ * Supports filtering by real vs synthetic demo records.
+ */
+router.get('/queue', requireClinicianAuth, async (req: Request, res: Response): Promise<void> => {
+  if (!isDbConnected()) {
+    res.status(503).json({
+      success: false,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const includeDemo = req.query.includeDemo === 'true';
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 100);
+
+    const filter: any = {};
+    if (!includeDemo) {
+      filter.isDemo = { $ne: true };
+    }
+
+    const rawQueue = await PatientIntake.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select(
+        'intakeId patientId clientSubmissionId fullName age gender preferredLanguage visitDate tokenNumber complaint emergency status review isDemo createdAt updatedAt'
+      )
+      .lean();
+
+    // Accurately classify records: do not automatically assume legacy records are real patients
+    const queue = rawQueue.map((p: any) => {
+      const isSynthetic =
+        p.isDemo === true ||
+        (p.patientId && (p.patientId.startsWith('TEST-') || p.patientId.startsWith('SYNTH-'))) ||
+        (p.fullName && p.fullName.toLowerCase().includes('synthetic')) ||
+        (p.clientSubmissionId && p.clientSubmissionId.startsWith('TEST-'));
+
+      let classification: 'verified_patient' | 'synthetic_demo' | 'legacy_unclassified';
+      if (isSynthetic) {
+        classification = 'synthetic_demo';
+      } else if (p.isDemo === false) {
+        classification = 'verified_patient';
+      } else {
+        // isDemo is missing/undefined on older records
+        classification = 'legacy_unclassified';
+      }
+
+      return {
+        ...p,
+        recordClassification: classification,
+      };
+    });
+
+    const clinician = (req as any).clinician;
+    await createAuditEntry('QUEUE_ACCESSED', {
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userAgent: req.get('user-agent'),
+      status: 'SUCCESS',
+      details: { staffId: clinician?.staffId, returnedCount: queue.length, includeDemo },
+    });
+
+    res.status(200).json({
+      success: true,
+      count: queue.length,
+      data: queue,
+    });
+  } catch (err) {
+    console.error('❌ [Queue Route] Error fetching patient queue:', err instanceof Error ? err.message : err);
+    res.status(500).json({
+      success: false,
+      error: 'An internal error occurred while fetching the patient queue.',
+    });
+  }
+});
 
 /**
  * POST /api/patients/intake
@@ -35,8 +135,8 @@ router.post(
     }
 
     try {
-      const body = req.body as ValidatedIntakeBody;
-      const { clientSubmissionId, registration, complaint, history, emergency } = body;
+      const body = req.body as ValidatedIntakeBody & { isDemo?: boolean };
+      const { clientSubmissionId, registration, complaint, history, emergency, isDemo } = body;
 
       // 2. Duplicate Prevention / Idempotency Check
       if (clientSubmissionId) {
@@ -149,6 +249,7 @@ router.post(
           reasons: emergency?.reasons || [],
           acknowledged: Boolean(emergency?.acknowledged),
         },
+        isDemo: Boolean(isDemo),
         status: 'submitted',
         tokenNumber,
       });
@@ -160,7 +261,7 @@ router.post(
         ipAddress: req.ip || req.socket.remoteAddress,
         userAgent: req.get('user-agent'),
         status: 'SUCCESS',
-        details: { tokenNumber, emergencyFlag: Boolean(emergency?.isTriggered) },
+        details: { tokenNumber, emergencyFlag: Boolean(emergency?.isTriggered), isDemo: Boolean(isDemo) },
       });
 
       // 6. Return response
@@ -188,10 +289,9 @@ router.post(
 
 /**
  * GET /api/patients/intake/:id
- * Fetches an intake record by intakeId for clinical review.
- * No generic list endpoint is provided to safeguard patient confidentiality.
+ * Fetches an intake record by intakeId for authorized clinical review.
  */
-router.get('/intake/:id', async (req: Request, res: Response): Promise<void> => {
+router.get('/intake/:id', requireClinicianAuth, async (req: Request, res: Response): Promise<void> => {
   if (!isDbConnected()) {
     res.status(503).json({
       success: false,
@@ -203,7 +303,7 @@ router.get('/intake/:id', async (req: Request, res: Response): Promise<void> => 
   const { id } = req.params;
 
   // Basic validation of id format
-  if (!id || id.length > 50) {
+  if (!id || id.length > 50 || !/^[A-Za-z0-9_-]+$/.test(id)) {
     res.status(400).json({ success: false, error: 'Invalid record identifier format.' });
     return;
   }
@@ -221,6 +321,7 @@ router.get('/intake/:id', async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    const clinician = (req as any).clinician;
     // Audit access
     await createAuditEntry('INTAKE_ACCESSED', {
       intakeId: record.intakeId,
@@ -228,11 +329,30 @@ router.get('/intake/:id', async (req: Request, res: Response): Promise<void> => 
       ipAddress: req.ip || req.socket.remoteAddress,
       userAgent: req.get('user-agent'),
       status: 'SUCCESS',
+      details: { accessedByStaffId: clinician?.staffId },
     });
+
+    const isSynthetic =
+      (record as any).isDemo === true ||
+      ((record as any).patientId && ((record as any).patientId.startsWith('TEST-') || (record as any).patientId.startsWith('SYNTH-'))) ||
+      ((record as any).fullName && (record as any).fullName.toLowerCase().includes('synthetic')) ||
+      ((record as any).clientSubmissionId && (record as any).clientSubmissionId.startsWith('TEST-'));
+
+    let classification: 'verified_patient' | 'synthetic_demo' | 'legacy_unclassified';
+    if (isSynthetic) {
+      classification = 'synthetic_demo';
+    } else if ((record as any).isDemo === false) {
+      classification = 'verified_patient';
+    } else {
+      classification = 'legacy_unclassified';
+    }
 
     res.status(200).json({
       success: true,
-      data: record,
+      data: {
+        ...record,
+        recordClassification: classification,
+      },
     });
   } catch (err) {
     console.error('❌ [Intake Route] Error retrieving record:', err instanceof Error ? err.message : err);
@@ -243,4 +363,178 @@ router.get('/intake/:id', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
+/**
+ * PATCH /api/patients/intake/:id/review
+ * Saves doctor examination notes, updates review status, and records clinician sign-off.
+ */
+router.patch(
+  '/intake/:id/review',
+  requireClinicianAuth,
+  validateDoctorReview,
+  async (req: Request, res: Response): Promise<void> => {
+    if (!isDbConnected()) {
+      res.status(503).json({
+        success: false,
+        error: 'Database service is currently unavailable.',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    if (!id || id.length > 50 || !/^[A-Za-z0-9_-]+$/.test(id)) {
+      res.status(400).json({ success: false, error: 'Invalid record identifier format.' });
+      return;
+    }
+
+    try {
+      const clinician = (req as any).clinician;
+      const body = req.body as ValidatedDoctorReviewBody;
+
+      const record = await PatientIntake.findOne({
+        $or: [{ intakeId: id }, { patientId: id }],
+      });
+
+      if (!record) {
+        res.status(404).json({
+          success: false,
+          error: 'Intake record not found for review.',
+        });
+        return;
+      }
+
+      // 1. Role boundary: Evaluators cannot modify non-demo records
+      if (clinician?.role === 'evaluator' && !record.isDemo) {
+        res.status(403).json({
+          success: false,
+          error: 'Access denied: Evaluator accounts are restricted to synthetic demo records only.',
+          code: 'FORBIDDEN_EVALUATOR',
+        });
+        return;
+      }
+
+      // 2. Prevent silent overwriting of already completed & signed reviews
+      const isAlreadyCompleted = record.status === 'completed' || record.review?.isApproved === true;
+      if (isAlreadyCompleted && !body.allowAmendment) {
+        res.status(409).json({
+          success: false,
+          error: 'This record has already been reviewed and signed off. Re-signing or modifying notes requires explicit clinical amendment authorization.',
+          code: 'ALREADY_COMPLETED',
+          existingReview: record.review,
+        });
+        return;
+      }
+
+      // Update doctor notes if provided
+      if (body.doctorNotes !== undefined) {
+        record.doctorNotes = body.doctorNotes;
+      }
+
+      const isApproved = body.isApproved ?? record.review?.isApproved ?? false;
+      const reviewStatus = body.status || (isApproved ? 'completed' : 'under_review');
+      const reviewerName = body.reviewedBy || clinician?.name || 'Authorized Medical Officer';
+
+      const previousReviewer = record.review?.reviewedBy;
+      record.review = {
+        reviewedBy: reviewerName,
+        reviewedAt: isApproved ? new Date() : record.review?.reviewedAt || new Date(),
+        isApproved,
+        status: reviewStatus,
+      };
+
+      if (isApproved) {
+        record.status = 'completed';
+      } else if (record.status === 'submitted') {
+        record.status = 'under_review';
+      }
+
+      await record.save();
+
+      const action = isAlreadyCompleted ? 'INTAKE_AMENDED' : (isApproved ? 'INTAKE_SIGNED' : 'INTAKE_REVIEWED');
+      await createAuditEntry(action, {
+        intakeId: record.intakeId,
+        patientId: record.patientId,
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.get('user-agent'),
+        status: 'SUCCESS',
+        details: {
+          staffId: clinician?.staffId,
+          reviewerName,
+          isApproved,
+          isAmended: isAlreadyCompleted,
+          previousReviewer,
+          notesLength: record.doctorNotes?.length || 0,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: isApproved ? 'Clinical intake reviewed and signed off.' : 'Doctor notes saved successfully.',
+        data: {
+          intakeId: record.intakeId,
+          patientId: record.patientId,
+          status: record.status,
+          doctorNotes: record.doctorNotes,
+          review: record.review,
+          updatedAt: record.updatedAt,
+        },
+      });
+    } catch (err) {
+      console.error('❌ [Review Route] Error saving doctor review:', err instanceof Error ? err.message : err);
+      res.status(500).json({
+        success: false,
+        error: 'An internal error occurred while saving the doctor review.',
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/patients/synthetic/:intakeId
+ * Safety-restricted deletion endpoint strictly limited to synthetic test records.
+ * NEVER deletes real patient records (enforced by patientId / isDemo check).
+ */
+router.delete(
+  '/synthetic/:intakeId',
+  requireClinicianAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    if (!isDbConnected()) {
+      res.status(503).json({ success: false, error: 'Database service unavailable.' });
+      return;
+    }
+
+    const { intakeId } = req.params;
+    try {
+      const record = await PatientIntake.findOne({ intakeId });
+      if (!record) {
+        res.status(404).json({ success: false, error: 'Synthetic record not found.' });
+        return;
+      }
+
+      // Strict safety check: only synthetic test records can be cleaned up
+      const isTestRecord = record.isDemo || record.patientId.startsWith('TEST-SYNTH-') || record.fullName.includes('(Synthetic Demo)');
+      if (!isTestRecord) {
+        res.status(403).json({
+          success: false,
+          error: 'Operation rejected: Real patient records cannot be deleted.',
+        });
+        return;
+      }
+
+      await PatientIntake.deleteOne({ intakeId });
+
+      res.status(200).json({
+        success: true,
+        message: 'Synthetic test record cleaned up successfully.',
+        intakeId,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: 'An internal error occurred during synthetic record cleanup.',
+      });
+    }
+  }
+);
+
 export default router;
+
